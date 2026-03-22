@@ -1,0 +1,65 @@
+{
+  "building_name": "Building 1 — Pre-1990 Non-Ductile RC Frame",
+  "era": "pre-1990",
+  "code": "Pre-AS1170.4:1993 (no seismic design)",
+  "location": "Newcastle, NSW",
+  "seismic_zone": {
+    "Z": 0.11,
+    "site_class": "De",
+    "importance_level": 2,
+    "return_period_yr": 500
+  },
+  "structural_periods": {
+    "T1_FEM_s": 0.610,
+    "T2_FEM_s": 0.200,
+    "T1_code_approx_s": 0.288,
+    "T1_ratio": 2.12,
+    "note": "T1 ratio > 1 expected — fibre model with cracked sections is more flexible than the code empirical formula"
+  },
+  "as1170_4_static": {
+    "seismic_weight_W_kN": 1075.2,
+    "seismic_weight_per_floor_kN": 537.6,
+    "spectral_shape_Ch": 0.672,
+    "ductility_mu": 2.0,
+    "performance_Sp": 0.77,
+    "base_shear_V_kN": 30.6,
+    "V_over_W": 0.0285
+  },
+  "time_history_results": {
+    "ground_motion": "Synthetic — modulated sine, PGA=0.11g, 20s",
+    "PIDR_storey1_pct": 0.230,
+    "PIDR_storey2_pct": 0.317,
+    "PIDR_max_pct": 0.317,
+    "drift_limit_pct": 1.5,
+    "drift_pass": true,
+    "PFA_ground_g": 0.110,
+    "PFA_floor1_g": 0.075,
+    "PFA_roof_g": 0.177,
+    "V_dynamic_kN": 135.2,
+    "V_dyn_over_V_stat": 4.42,
+    "note_on_dynamic_shear": "High ratio (4.42) due to resonance — synthetic GM frequency tuned near T1"
+  },
+  "compliance": {
+    "drift_check": "PASS",
+    "overall": "COMPLIANT",
+    "standard": "AS1170.4-2007"
+  },
+  "model_details": {
+    "nodes": 12,
+    "elements": 14,
+    "columns": 8,
+    "beams": 6,
+    "element_type": "nonlinearBeamColumn with fibre sections",
+    "concrete_model": "Concrete01 (Kent-Park)",
+    "steel_model": "Steel01 (bilinear, 1% hardening)",
+    "geometric_transform": "PDelta (columns), Linear (beams)",
+    "integration_points": 5,
+    "damping": "5% Rayleigh at T1 and T2",
+    "time_integrator": "Newmark average acceleration"
+  },
+  "known_issues_resolved": [
+    "ARPACK eigenvalue solver fails with equalDOF constraints — resolved by using fullGenLapack",
+    "Nodal masses assigned to master nodes only (not all nodes) — required for correct rigid diaphragm behaviour",
+    "constraints('Transformation') required for transient analysis with equalDOF — not 'Plain'"
+  ]
+}

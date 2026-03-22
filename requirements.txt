@@ -1,0 +1,17 @@
+# Core structural analysis
+openseespy>=3.4.0
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+
+# LLM interface — Claude (Anthropic) chosen over GPT-4o
+# Rationale: Constitutional AI training, explicit uncertainty flagging,
+# ~6-10x lower cost per extraction. See docs/LLM_CHOICE.md.
+anthropic>=0.25.0
+
+# Testing (optional — only needed for running test suite locally)
+# pytest>=7.0.0
+
+# NOTE: Google Colab already has numpy, scipy, matplotlib installed.
+# Only openseespy and anthropic need to be added in Colab:
+#   !pip install openseespy anthropic -q
