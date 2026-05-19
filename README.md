@@ -234,7 +234,7 @@ User Input (plain English description)
   year       = {2026},
   school     = {University of Technology Sydney},
   note       = {Engineering Graduate Project PG (42003), supervised by Prof. Jianchun Li},
-  url        = {https://github.com/YOUR_USERNAME/seismic-llm-assessment}
+  url        = {https://github.com/KabishJungThapa2/seismic-llm-assessment}
 }
 ```
 
