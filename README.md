@@ -10,7 +10,7 @@
 
 ## What This Is
 
-A proof-of-concept system that assesses the seismic vulnerability of a residential building from a plain English description. You describe the building — the system extracts structural parameters, runs a nonlinear structural analysis, and checks compliance with Australian earthquake code AS1170.4.
+A proof-of-concept system that assesses the seismic vulnerability of a residential building from a plain English description. You describe the building the system extracts structural parameters, runs a nonlinear structural analysis, and checks compliance with Australian earthquake code AS1170.4.
 
 **No structural engineering software experience required to run it.**
 
