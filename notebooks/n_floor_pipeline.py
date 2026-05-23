@@ -184,11 +184,29 @@ def static_analysis(b, d):
     """
     T1 = 0.075 * d['Hn'] ** 0.75   # Appendix B — RC frames
 
-    if   T1 <= 0.10: Ch = 2.35
-    elif T1 <  1.50: Ch = 1.65 * (0.1/T1)**0.85
-    else:            Ch = 1.10 * (1.5/T1)**2.0
+    # Amendment v2.0.0: continuous spectral shape (no jump at T=0.1 or T=1.5)
 
-    V = max((b['Z']/b['mu']) * b['Sp'] * Ch * d['W_total'], 0.01*d['W_total'])
+
+    if T1 <= 0:
+
+
+        Ch = 2.35
+
+
+    elif T1 < 1.50:
+
+
+        Ch = min(2.35, 1.65 * (0.1 / T1) ** 0.85)
+
+
+    else:
+
+
+        Ch = 1.65 * (0.1 / 1.5) ** 0.85 * (1.5 / T1) ** 2.0
+
+    # Amendment 2 (2018) Cl 3.3: kpZ = max(kp*Z, 0.08); kp=1.0 for ULS
+    kpZ = max(1.0 * b['Z'], 0.08)
+    V = max((kpZ / b['mu']) * b['Sp'] * Ch * d['W_total'], 0.01*d['W_total'])
 
     # Floor-level lateral forces: Fi = V * (Wi*hi) / sum(Wj*hj)
     # AS1170.4 Cl 6.3 — equal floor masses so Wi cancels
@@ -377,6 +395,7 @@ def run_pushover(b, d, node_id, sa):
     for fi in range(1, d['n']+1):
         ops.load(node_id[fi][0], fracs[fi-1], 0.0, 0.0)
 
+    ops.wipeAnalysis()  # v2.0.0: clear stale Static analysis from gravity step
     ops.system('UmfPack');  ops.numberer('RCM')
     ops.constraints('Transformation')
     ops.test('NormDispIncr', 1e-6, 150, 0)
@@ -538,6 +557,14 @@ def compute_edps(b, d, th, sa, ev):
     # Per-floor PFA (omega^2 * u approximation)
     PFA_storey = [b['Z']*G]  # ground = PGA
     for fi in range(1, d['n']+1):
+        # v2.0.0 NOTE: This is pseudo-acceleration (omega^2 * u_rel).
+
+        # For ABSOLUTE floor acceleration, use: a_abs = a_ground + d2u_rel/dt2
+
+        # computed via np.gradient(np.gradient(u, dt), dt) + ground accel array.
+
+        # See src/compliance.py compute_edps() for the correct implementation.
+
         PFA = omega1**2 * float(np.max(np.abs(th['disp_all'][fi])))
         PFA_storey.append(PFA)
 

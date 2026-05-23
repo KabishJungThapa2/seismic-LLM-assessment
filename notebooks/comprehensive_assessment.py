@@ -148,9 +148,13 @@ T1_approx = 0.075 * Hn**0.75   # code empirical period (Appendix B)
 
 def Ch_De(T):
     """Spectral shape factor for Site Class De. AS1170.4 Table 6.4."""
-    if   T <= 0.10: return 2.35
-    elif T <  1.50: return 1.65 * (0.1 / T) ** 0.85
-    else:           return 1.10 * (1.5 / T) ** 2.0
+    # Amendment v2.0.0: continuous spectral shape (no jump at T=0.1 or T=1.5)
+
+    if T <= 0: return 2.35
+
+    if T < 1.50: return min(2.35, 1.65 * (0.1 / T) ** 0.85)
+
+    return 1.65 * (0.1 / 1.5) ** 0.85 * (1.5 / T) ** 2.0
 
 # ── Performance level thresholds (ASCE 41 / ATC-40 adapted for RC) ───────────
 PERFORMANCE_LIMITS = {
@@ -635,6 +639,7 @@ def pushover_analysis(node_id, T_list):
     n_steps      = 200
     d_step       = target_disp / n_steps
 
+    ops.wipeAnalysis()  # v2.0.0: clear stale Static analysis from gravity step
     ops.system('UmfPack'); ops.numberer('RCM')
     ops.constraints('Transformation')
     ops.test('NormDispIncr', 1.0e-8, 50, 0)

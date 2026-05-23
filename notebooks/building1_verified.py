@@ -131,7 +131,11 @@ print(f"  M per floor   : {M_floor:.3f} kN·s²/m")
 def as1170_base_shear(Z, mu, Sp, W, site_class, T1):
     """
     Equivalent static base shear per AS1170.4-2007 Cl 6.2.
-    V = (Z/mu) * Sp * Ch(T1) * kp * W
+    # Amendment 2 (2018) Cl 3.3: kpZ = max(kp*Z, 0.08)
+
+    kpZ = max(kp * Z, 0.08)
+
+    V = (kpZ / mu) * Sp * Ch(T1) * W
     """
     # Spectral shape factor Ch(T) — Site Class De, Table 6.4
     # Using simplified expression fitted to AS1170.4 Table 6.4 values
@@ -143,7 +147,11 @@ def as1170_base_shear(Z, mu, Sp, W, site_class, T1):
         Ch = 1.10 * (1.5 / T1)**2.0
 
     kp  = 1.0          # probability factor — IL2 (normal residential), 500yr
-    V   = (Z * kp / mu) * Sp * Ch * W
+    # Amendment 2 (2018) Cl 3.3: kpZ = max(kp*Z, 0.08)
+
+    kpZ = max(kp * Z, 0.08)
+
+    V = (kpZ / mu) * Sp * Ch * W
     # Minimum base shear: V ≥ 0.01·W (AS1170.4 Cl 6.2.3)
     V   = max(V, 0.01 * W)
     return V, Ch
@@ -463,6 +471,7 @@ def time_history_analysis(node_id, gm_file, dt, npts, T1, eigs):
     ops.pattern('UniformExcitation', 2, 1, '-accel', 2)
 
     # ── ANALYSIS SETUP ───────────────────────────────────────────────────
+    ops.wipeAnalysis()  # v2.0.0: clear stale Static analysis from gravity step
     ops.system('UmfPack')               # direct solver — robust for nonlinear
     ops.numberer('RCM')
     ops.constraints('Transformation')  # required for equalDOF constraints
@@ -549,6 +558,14 @@ def post_process(time_h, disp_g, disp_f1, disp_r, T1):
     # ── PEAK FLOOR ACCELERATIONS ─────────────────────────────────────────
     # Approximated from displacement: a ≈ ω² × u (harmonic assumption)
     omega1     = 2 * np.pi / T1
+    # v2.0.0 NOTE: This is pseudo-acceleration (omega^2 * u_rel).
+
+    # For ABSOLUTE floor acceleration, use: a_abs = a_ground + d2u_rel/dt2
+
+    # computed via np.gradient(np.gradient(u, dt), dt) + ground accel array.
+
+    # See src/compliance.py compute_edps() for the correct implementation.
+
     PFA_roof   = omega1**2 * float(np.max(np.abs(disp_r)))
     PFA_floor1 = omega1**2 * float(np.max(np.abs(disp_f1)))
     PFA_ground = Z * g   # input PGA

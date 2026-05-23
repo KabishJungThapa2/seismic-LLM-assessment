@@ -94,3 +94,37 @@ preserves old behaviour (falls back to pseudo-acceleration via omega^2*u).
 callers must use `cleanup_gm_file()` explicitly.
 
 `generate_synthetic_gm()` returns a 4-tuple `(file, dt, npts, accel)`.
+
+---
+
+## v2.0.1 — Notebook bug-fix sweep (May 2026)
+
+Extended the v2.0.0 fixes from `src/` to all notebooks. Pre-v2.0.1
+audit found:
+
+| File | Bug 1 (Amdt 2) | Bug 2 (Ch cont.) | Bug 3 (wipe) | Bug 4 (PFA) |
+|------|-----|-----|-----|-----|
+| `seismic_assessment_UTS_EGP42003.ipynb` | MISSING | DISCONTINUOUS | MISSING | OK |
+| `building1_verified.py` | MISSING | OK (no spectral fn) | MISSING | PSEUDO |
+| `comprehensive_assessment.py` | OK | DISCONTINUOUS | MISSING | OK |
+| `demo_single_cell.py` | MISSING | DISCONTINUOUS | MISSING | PSEUDO |
+| `n_floor_pipeline.py` | MISSING | DISCONTINUOUS | MISSING | PSEUDO |
+| `n_storey_assessment.py` | MISSING | DISCONTINUOUS | MISSING | PSEUDO |
+
+After v2.0.1: all 6 files have Amendment 2 applied, continuous Ch
+function, and `ops.wipeAnalysis()` before the transient analysis
+setup. Locations with the pseudo-acceleration PFA formula have been
+annotated with comments referencing `src/compliance.py` for the
+proper implementation; the production pipeline (`src/pipeline.py`)
+already uses the correct formula.
+
+### Files modified in v2.0.1
+- `notebooks/building1_verified.py` (+4 Amendment 2 sites, +1 wipeAnalysis)
+- `notebooks/comprehensive_assessment.py` (+1 wipeAnalysis, spectral fix)
+- `notebooks/demo_single_cell.py` (+1 Amendment 2, +1 wipeAnalysis, spectral fix)
+- `notebooks/n_floor_pipeline.py` (+1 Amendment 2, +1 wipeAnalysis, spectral fix)
+- `notebooks/n_storey_assessment.py` (+1 Amendment 2, +1 wipeAnalysis, spectral fix)
+- `notebooks/seismic_assessment_UTS_EGP42003.ipynb` (+1 Amendment 2, +1 wipeAnalysis, spectral fix)
+
+### Tests
+All 43 existing tests in `tests/test_*.py` continue to pass.

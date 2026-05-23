@@ -394,11 +394,33 @@ def static_analysis(params, W_total):
     Hn = p['num_storeys'] * p['storey_height']
     T1 = 0.075 * Hn ** 0.75
 
-    if   T1 <= 0.10: Ch = 2.35
-    elif T1 <  1.50: Ch = 1.65 * (0.1 / T1) ** 0.85
-    else:            Ch = 1.10 * (1.5 / T1) ** 2.0
+    # Amendment v2.0.0: continuous spectral shape (no jump at T=0.1 or T=1.5)
 
-    V = max((p['Z'] / p['mu']) * p['Sp'] * Ch * W_total, 0.01 * W_total)
+
+    if T1 <= 0:
+
+
+        Ch = 2.35
+
+
+    elif T1 < 1.50:
+
+
+        Ch = min(2.35, 1.65 * (0.1 / T1) ** 0.85)
+
+
+    else:
+
+
+        Ch = 1.65 * (0.1 / 1.5) ** 0.85 * (1.5 / T1) ** 2.0
+
+    # Amendment 2 (2018) Cl 3.3: kpZ = max(kp*Z, 0.08) — kp=1.0 for ULS
+
+
+    kpZ = max(1.0 * p['Z'], 0.08)
+
+
+    V = max((kpZ / p['mu']) * p['Sp'] * Ch * W_total, 0.01 * W_total)
     return V, Ch, T1
 
 # =============================================================================
@@ -549,6 +571,7 @@ def run_pushover(node_id, p, W_total, V_static):
     for fi, frac in enumerate(fractions, 1):
         ops.load(node_id[fi][0], frac, 0.0, 0.0)
 
+    ops.wipeAnalysis()  # v2.0.0: clear stale Static analysis from gravity step
     ops.system('UmfPack');          ops.numberer('RCM')
     ops.constraints('Transformation')
     ops.test('NormDispIncr', 1e-6, 100, 0)
@@ -686,6 +709,14 @@ def compute_edps(th, p, M_floor, W_total, V_static, T1):
     omega1      = 2.0 * np.pi / T1
     PFA_ground  = p['Z'] * G
     PFA_f1      = omega1**2 * float(np.max(np.abs(th['disp_f'])))
+    # v2.0.0 NOTE: This is pseudo-acceleration (omega^2 * u_rel).
+
+    # For ABSOLUTE floor acceleration, use: a_abs = a_ground + d2u_rel/dt2
+
+    # computed via np.gradient(np.gradient(u, dt), dt) + ground accel array.
+
+    # See src/compliance.py compute_edps() for the correct implementation.
+
     PFA_roof    = omega1**2 * float(np.max(np.abs(th['disp_r'])))
     V_dyn       = M_floor * PFA_f1 + M_floor * PFA_roof
     max_roof_mm = float(np.max(np.abs(th['disp_r']))) * 1000

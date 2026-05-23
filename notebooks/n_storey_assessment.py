@@ -159,11 +159,27 @@ Hn           = num_storeys * storey_height
 T1_approx    = 0.075 * (Hn ** 0.75)   # AS1170.4 Appendix B
 
 # Spectral shape factor Ch(T1) — Site De
-if   T1_approx <= 0.10: Ch = 2.35
-elif T1_approx <  1.50: Ch = 1.65 * (0.1 / T1_approx) ** 0.85
-else:                   Ch = 1.10 * (1.5 / T1_approx) ** 2.0
+# Amendment v2.0.0: continuous spectral shape (no jump at T=0.1 or T=1.5)
 
-V_static = max((Z / mu) * Sp * Ch * W_total, 0.01 * W_total)
+if T1_approx <= 0:
+
+    Ch = 2.35
+
+elif T1_approx < 1.50:
+
+    Ch = min(2.35, 1.65 * (0.1 / T1_approx) ** 0.85)
+
+else:
+
+    Ch = 1.65 * (0.1 / 1.5) ** 0.85 * (1.5 / T1_approx) ** 2.0
+
+# Amendment 2 (2018) Cl 3.3: kpZ = max(kp*Z, 0.08); kp=1.0 for ULS
+
+
+kpZ = max(1.0 * Z, 0.08)
+
+
+V_static = max((kpZ / mu) * Sp * Ch * W_total, 0.01 * W_total)
 
 print("=" * 60)
 print(f"  {BUILDING_NAME}  ({num_storeys} storeys)")
@@ -450,6 +466,7 @@ def time_history_analysis(node_id, gm_file, dt, npts, T_list, eigs, omega1, omeg
     ops.pattern('UniformExcitation', 2, 1, '-accel', 2)
 
     # ── Analysis setup ───────────────────────────────────────────────────
+    ops.wipeAnalysis()  # v2.0.0: clear stale Static analysis from gravity step
     ops.system('UmfPack');   ops.numberer('RCM')
     ops.constraints('Transformation')   # REQUIRED with equalDOF
     ops.test('NormDispIncr', 1.0e-8, 10, 0)
