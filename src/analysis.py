@@ -4,7 +4,7 @@
 #
 # Handles ground motion generation and nonlinear transient analysis.
 # Uses Newmark average acceleration with Rayleigh damping at 5% critical.
-# Convergence fallback chain: Newton → KrylovNewton → ModifiedNewton
+# Convergence fallback chain: Newton -> KrylovNewton -> ModifiedNewton
 # =============================================================================
 
 import numpy as np
@@ -22,20 +22,22 @@ def generate_synthetic_gm(Z: float, T1: float,
     while still exciting the structure.
 
     Args:
-        Z:        Hazard factor (PGA = Z*g in m/s²)
-        T1:       Fundamental period (s) — used to tune frequency
+        Z:        Hazard factor (PGA = Z*g in m/s2)
+        T1:       Fundamental period (s) - used to tune frequency
         dt:       Time step (s)
         duration: Duration (s)
 
     Returns:
-        (filepath, dt, npts) — file contains acceleration in m/s²
+        (filepath, dt, npts, accel_array) - file contains acceleration in m/s2
+        accel_array is returned in addition to file path so PFA computation
+        can use it without re-reading from disk.
 
     NOTE: This is a simplified synthetic motion for proof-of-concept.
     For final analysis, replace with recorded or spectrum-compatible motions
     scaled to AS1170.4 design spectrum using SeismoMatch or similar.
     """
     t    = np.arange(0, duration, dt)
-    freq = min(1.0 / T1, 4.0)      # dominant frequency near building period
+    freq = min(1.0 / T1, 4.0)             # dominant frequency near building period
     env  = np.sin(np.pi * t / duration)   # Hanning envelope
     accel = Z * G * env * np.sin(2 * np.pi * freq * t)
 
@@ -44,9 +46,9 @@ def generate_synthetic_gm(Z: float, T1: float,
     np.savetxt(tmp.name, accel, fmt='%.8f')
     tmp.close()
 
-    print(f"  Ground motion: PGA={Z}g ({Z*G:.2f} m/s²), "
+    print(f"  Ground motion: PGA={Z}g ({Z*G:.2f} m/s2), "
           f"f_dom={freq:.2f} Hz, dt={dt}s, npts={len(t)}")
-    return tmp.name, dt, len(t)
+    return tmp.name, dt, len(t), accel
 
 
 def run_time_history(model, gm_file: str, dt: float, npts: int,
@@ -56,19 +58,19 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
 
     Args:
         model:   RCFrameModel instance (already built + gravity run)
-        gm_file: Path to ground motion acceleration file (m/s²)
+        gm_file: Path to ground motion acceleration file (m/s2)
         dt:      Time step of ground motion file
         npts:    Number of points in ground motion
         T1:      Fundamental period (s) from eigenvalue analysis
         eigs:    Eigenvalue list from eigenvalue analysis
 
     Returns:
-        Dictionary with time history arrays and peak EDPs.
+        Dictionary with time history arrays and convergence stats.
     """
-    p      = model.p
-    nid    = model.node_id
+    p   = model.p
+    nid = model.node_id
 
-    # ── Rayleigh damping — 5% at modes 1 and 2 ───────────────────────
+    # ---- Rayleigh damping - 5% at modes 1 and 2 ----------------------------
     omega1 = abs(eigs[0]) ** 0.5
     omega2 = abs(eigs[1]) ** 0.5 if len(eigs) >= 2 else omega1 * 3
     xi     = 0.05
@@ -77,11 +79,17 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
     ops.rayleigh(a0, 0.0, 0.0, a1)
     print(f"  Rayleigh: a0={a0:.5f}, a1={a1:.6f}  (5% at T1,T2)")
 
-    # ── Ground motion loading ─────────────────────────────────────────
+    # ---- Ground motion loading ---------------------------------------------
     ops.timeSeries('Path', 2, '-dt', dt, '-filePath', gm_file, '-factor', 1.0)
     ops.pattern('UniformExcitation', 2, 1, '-accel', 2)
 
-    # ── Analysis setup ────────────────────────────────────────────────
+    # ---- Analysis setup ----------------------------------------------------
+    # CRITICAL: wipeAnalysis() clears the previous Static analysis object that
+    # was set up for gravity. Without this, OpenSees emits:
+    #   "can't set handler after analysis is created"
+    #   "can't set transient integrator in static analysis"
+    ops.wipeAnalysis()
+
     ops.system('UmfPack')
     ops.numberer('RCM')
     ops.constraints('Transformation')      # REQUIRED for equalDOF
@@ -90,7 +98,7 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
     ops.algorithm('Newton')
     ops.analysis('Transient')
 
-    # ── Time stepping ─────────────────────────────────────────────────
+    # ---- Time stepping -----------------------------------------------------
     dt_sub  = dt / 2           # sub-step for stability
     n_steps = int(npts * dt / dt_sub)
 
@@ -99,7 +107,7 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
     disp_f  = []   # first floor master node
     disp_r  = []   # roof master node
 
-    print(f"  Running: {n_steps} steps × dt={dt_sub:.4f}s")
+    print(f"  Running: {n_steps} steps x dt={dt_sub:.4f}s")
 
     n_fail = 0
     for step in range(n_steps):
@@ -115,9 +123,9 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
                 ops.test('NormDispIncr', 1.0e-6, 100, 0)
                 ops.algorithm('ModifiedNewton', '-initial')
                 ops.analyze(1, dt_sub / 10)
-            # Reset to standard settings
+                ops.test('NormDispIncr', 1.0e-8, 10, 0)
+            # Reset to standard Newton algorithm
             ops.algorithm('Newton')
-            ops.test('NormDispIncr', 1.0e-8, 10, 0)
 
         time_h.append(ops.getTime())
         disp_g.append(ops.nodeDisp(nid[0][0], 1))
@@ -129,15 +137,23 @@ def run_time_history(model, gm_file: str, dt: float, npts: int,
     else:
         print("  TH: COMPLETE (all steps converged)")
 
-    # Cleanup temp file
-    try:
-        os.remove(gm_file)
-    except Exception:
-        pass
+    # Note: do NOT delete gm_file here - the caller may still want it
+    # for PFA computation. Caller is responsible for cleanup.
 
     return {
         'time_h': np.array(time_h),
         'disp_g': np.array(disp_g),
         'disp_f': np.array(disp_f),
         'disp_r': np.array(disp_r),
+        'n_fail': n_fail,
+        'gm_file': gm_file,
     }
+
+
+def cleanup_gm_file(gm_file: str):
+    """Delete the temporary ground motion file. Call after EDP computation."""
+    try:
+        if os.path.exists(gm_file):
+            os.remove(gm_file)
+    except Exception:
+        pass

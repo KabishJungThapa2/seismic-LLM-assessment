@@ -231,26 +231,31 @@ def run_analysis_pipeline(params: dict) -> dict:
     # Eigenvalue
     T1, eigs = model.eigenvalue_analysis()
 
-    # Static benchmark
-    V_static, Ch, T1_approx = static_base_shear(params, model.W_total)
+    # Static benchmark (now returns kpZ as well)
+    V_static, Ch, T1_approx, kpZ = static_base_shear(params, model.W_total)
     print(f"  Static V  = {V_static:.1f} kN  "
-          f"(V/W = {V_static/model.W_total:.4f})")
+          f"(V/W = {V_static/model.W_total:.4f}, kpZ = {kpZ:.3f})")
 
-    # Ground motion
-    gm_file, dt, npts = generate_synthetic_gm(params['Z'], T1)
+    # Ground motion (now returns the acceleration array too)
+    gm_file, dt, npts, gm_accel = generate_synthetic_gm(params['Z'], T1)
 
     # Time-history
     th = run_time_history(model, gm_file, dt, npts, T1, eigs)
 
-    # EDPs and compliance
-    edp = compute_edps(th, params, T1, model.M_floor,
-                       V_static, model.W_total)
+    # EDPs and compliance (pass W_floor and gm_accel for proper PFA + theta)
+    edp = compute_edps(th, params, T1, model.M_floor, model.W_floor,
+                       V_static, model.W_total, gm_accel=gm_accel, gm_dt=dt)
+
+    # Clean up the temp ground motion file now that EDPs are done
+    from analysis import cleanup_gm_file
+    cleanup_gm_file(gm_file)
 
     return {
         'params':     params,
         'T1':         T1,
         'T1_approx':  T1_approx,
         'V_static':   V_static,
+        'kpZ':        kpZ,
         'W_total':    model.W_total,
         'time_h':     th['time_h'],
         'disp_f':     th['disp_f'],
@@ -343,23 +348,34 @@ def plot_results(r: dict, filename: str = 'seismic_results.png'):
 def save_json(r: dict, filename: str = 'seismic_report.json') -> str:
     """Save results as machine-readable JSON."""
     report = {
-        "building_name":  r['params'].get('building_name'),
-        "era":            r['params'].get('era'),
-        "T1_FEM_s":       round(r['T1'], 4),
-        "T1_code_s":      round(r['T1_approx'], 4),
-        "PIDR_storey1_%": round(r['PIDR1'] * 100, 4),
-        "PIDR_storey2_%": round(r['PIDR2'] * 100, 4),
-        "PIDR_max_%":     round(r['PIDR_max'] * 100, 4),
-        "drift_limit_%":  round(r['drift_limit'] * 100, 1),
-        "drift_pass":     r['drift_pass'],
-        "PFA_f1_g":       round(r['PFA_f1'] / 9.81, 4),
-        "PFA_roof_g":     round(r['PFA_roof'] / 9.81, 4),
-        "V_static_kN":    round(r['V_static'], 2),
-        "V_dynamic_kN":   round(r['V_dynamic'], 2),
-        "compliant":      r['compliant'],
-        "parameters":     {k: v for k, v in r['params'].items()
-                           if k not in ('assumptions', 'confidence')},
-        "assumptions":    r['params'].get('assumptions', []),
+        "building_name":      r['params'].get('building_name'),
+        "era":                r['params'].get('era'),
+        "T1_FEM_s":           round(r['T1'], 4),
+        "T1_code_s":          round(r['T1_approx'], 4),
+        "T1_ratio":           round(r['T1'] / r['T1_approx'], 3),
+        "kpZ_amendment_2":    round(r.get('kpZ', 0.0), 4),
+        "amendment_2_applied": True,
+        "PIDR_storey1_%":     round(r['PIDR1'] * 100, 4),
+        "PIDR_storey2_%":     round(r['PIDR2'] * 100, 4),
+        "PIDR_max_%":         round(r['PIDR_max'] * 100, 4),
+        "governing_storey":   r['govern_storey'],
+        "drift_limit_%":      round(r['drift_limit'] * 100, 1),
+        "drift_pass":         r['drift_pass'],
+        "PFA_ground_g":       round(r['PFA_ground'] / 9.81, 4),
+        "PFA_f1_g":           round(r['PFA_f1'] / 9.81, 4),
+        "PFA_roof_g":         round(r['PFA_roof'] / 9.81, 4),
+        "amp_factor_roof":    round(r.get('amp_roof', 0), 3),
+        "V_static_kN":        round(r['V_static'], 2),
+        "V_dynamic_kN":       round(r['V_dynamic'], 2),
+        "V_dyn_static_ratio": round(r.get('V_dyn_static_ratio', 0), 3),
+        "theta_max_pdelta":   round(r.get('theta_max', 0), 5),
+        "pdelta_pass":        r.get('pdelta_pass', True),
+        "performance_level":  r.get('performance_level', 'unknown'),
+        "hazus_damage":       r.get('hazus_damage', 'unknown'),
+        "compliant":          r['compliant'],
+        "parameters":         {k: v for k, v in r['params'].items()
+                               if k not in ('assumptions', 'confidence')},
+        "assumptions":        r['params'].get('assumptions', []),
     }
     with open(filename, 'w') as f:
         json.dump(report, f, indent=2)
@@ -422,7 +438,7 @@ def run_pipeline():
     print_compliance_report(
         {k: results[k] for k in results if k not in
          ('params','time_h','disp_f','disp_r','drift_s1','drift_s2')},
-        params, results['T1'], results['T1_approx']
+        params, results['T1'], results['T1_approx'], results.get('kpZ')
     )
 
     # Stage 6: Save outputs

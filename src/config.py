@@ -45,14 +45,28 @@ HAZARD_FACTORS = {
 }
 
 def spectral_shape_De(T1):
-    if T1 <= 0.10: return 2.35
-    elif T1 < 1.50: return 1.65 * (0.1/T1)**0.85
-    else: return 1.10 * (1.5/T1)**2.0
+    """AS 1170.4:2007 spectral shape factor — Site Class De (deep/soft soil).
+
+    Continuous formulation with peak Ch capped at 2.35:
+      - Short period (T <= ~0.065s): plateau at 2.35
+      - Medium period (~0.065s <= T < 1.5s): 1.65 * (0.1/T)^0.85
+      - Long period (T >= 1.5s): continuous tail matching at T=1.5
+    """
+    if T1 <= 0:
+        return 2.35
+    if T1 < 1.5:
+        return min(2.35, 1.65 * (0.1 / T1) ** 0.85)
+    Ch_1p5 = 1.65 * (0.1 / 1.5) ** 0.85
+    return Ch_1p5 * (1.5 / T1) ** 2.0
 
 def spectral_shape_Ce(T1):
-    if T1 <= 0.10: return 2.35
-    elif T1 < 1.50: return 1.35 * (0.1/T1)**0.80
-    else: return 0.90 * (1.5/T1)**2.0
+    """AS 1170.4:2007 spectral shape factor — Site Class Ce (shallow soil)."""
+    if T1 <= 0:
+        return 2.35
+    if T1 < 1.5:
+        return min(2.35, 1.35 * (0.1 / T1) ** 0.80)
+    Ch_1p5 = 1.35 * (0.1 / 1.5) ** 0.80
+    return Ch_1p5 * (1.5 / T1) ** 2.0
 
 SPECTRAL_SHAPE  = {"De": spectral_shape_De, "Ce": spectral_shape_Ce}
 DRIFT_LIMIT     = 0.015
