@@ -1,5 +1,5 @@
 # LLM-Orchestrated Seismic Vulnerability Assessment
-### University of Technology Sydney: Engineering Graduate Project PG (42003)
+### University of Technology Sydney — Engineering Graduate Project PG (42003)
 
 **Student:** Kabish Jung Thapa (25631413)  
 **Supervisor:** Prof. Jianchun Li  
@@ -8,76 +8,79 @@
 
 ---
 
-## What This Is
+## What's This About?
 
-A proof-of-concept system that figures out how likely a residential building is to survive an earthquake—based entirely on a text description. You tell it "old brick home, 2 storeys, built in the 70s" and it:
+I built a system that predicts whether a residential building will survive an earthquake—just from describing it in plain English. Seriously.
 
-1. Extracts structural parameters (concrete strength, steel yield, etc.)
+You write something like: *"An old brick home, 2 storeys, built around 1975, 12m × 8m"*
+
+The system:
+1. Extracts structural parameters (concrete strength, steel yield, ductility, etc.)
 2. Builds a 3D nonlinear finite element model in OpenSeesPy
-3. Runs time-history seismic analysis
-4. Reports whether it meets the AS1170.4 Australian earthquake standard
+3. Runs a time-history seismic analysis on the Newcastle earthquake standard
+4. Tells you if it meets Australian code and shows damage states
 
-**No structural engineering software experience required.** Seriously—if you can describe a building in plain English, this handles the rest.
+**No structural engineering experience needed.** You describe. It calculates. You get answers.
 
 ```
-"A 2-storey brick home in Newcastle built around 1975, 12m x 8m floor plan"
-        ↓  keyword extraction (demo mode) or Claude API
-{ fc: 20 MPa, fy: 250 MPa, mu: 2.0, col: 300x300mm, ... }
-        ↓  OpenSeesPy nonlinear time-history analysis
-PIDR = 0.317%  |  Damage: None  |  AS1170.4: COMPLIANT
+"A 2-storey brick home in Newcastle, built ~1975, 12m × 8m floor plan"
+         ↓  Claude API (or demo keyword extraction)
+{ fc: 20 MPa, fy: 250 MPa, μ: 2.0, col: 300×300mm, ... }
+         ↓  OpenSeesPy nonlinear time-history analysis
+PIDR = 0.317% | Damage: None | AS1170.4: ✓ COMPLIANT
 ```
 
-**Why I built this:** Part of my thesis was exploring whether LLMs can replace tedious manual structural parameter extraction. Turns out they can—most of the time. There are edge cases, but for typical residential buildings described in natural language, Claude gets it right ~85% of the time with zero feature engineering.
+**Why I did this:** My thesis explores whether LLMs can replace manual structural parameter extraction. They can—most of the time. There are edge cases, but for quick desktop assessments, this works surprisingly well.
 
 ---
 
-## Quick Start — Google Colab (Easiest Path)
+## Quick Start — Google Colab (Easiest Option)
 
-**Don't install anything locally. Just:**
+Don't install anything locally. Seriously, just:
 
 1. Go to [Google Colab](https://colab.research.google.com)
 2. **File → Upload notebook**
 3. Pick `notebooks/seismic_assessment_UTS_EGP42003.ipynb`
 4. Run cells top to bottom (Shift+Enter)
-5. Cell 6 runs all three buildings automatically
+5. Cell 6 runs all three case-study buildings automatically
 
-**No API key needed** — demo mode uses keyword extraction. You get results in ~2 minutes.
+**No API key required** — the demo mode uses keyword extraction. You'll get results in about 2 minutes.
 
-If you want the Claude LLM to extract parameters (more accurate on unusual buildings), just paste your API key in Cell 2.
+Want Claude to extract parameters (more accurate on unusual buildings)? Just paste your API key in Cell 2, and it'll use that instead.
 
 ---
 
-## Repository Structure
+## What's Inside
 
 ```
 seismic-llm-assessment/
 │
 ├── notebooks/
-│   ├── seismic_assessment_UTS_EGP42003.ipynb  ← MAIN — use this
-│   ├── comprehensive_assessment.py            ← Full pipeline (supports n-storey)
-│   ├── demo_single_cell.py                    ← Minimal example — paste into a cell
+│   ├── seismic_assessment_UTS_EGP42003.ipynb  ← START HERE
+│   ├── comprehensive_assessment.py            ← Full pipeline (any n-storey)
+│   ├── demo_single_cell.py                    ← Minimal example
 │   └── building1_verified.py                  ← Just Building 1 (reproducibility)
 │
 ├── src/
 │   ├── config.py           ← Era defaults, AS1170.4 constants
 │   ├── extractor.py        ← Claude API + demo mode parameter extraction
-│   ├── opensees_model.py   ← Builds RC frame model (RCFrameModel class)
+│   ├── opensees_model.py   ← Builds RC frame model
 │   ├── analysis.py         ← Time-history analysis engine
-│   ├── compliance.py       ← AS1170.4 + Amendment 2 EDP computation
-│   ├── pipeline.py         ← Main orchestrator (for local interactive use)
+│   ├── compliance.py       ← AS1170.4 EDP computation & Amendment 2
+│   ├── pipeline.py         ← Main orchestrator (interactive use)
 │   └── demo_run_all.py     ← Non-interactive runner for all 3 buildings
 │
 ├── tests/
-│   ├── test_extractor.py   ← 32 unit tests (no OpenSeesPy required)
+│   ├── test_extractor.py   ← 32 unit tests (no OpenSeesPy needed)
 │   └── test_compliance.py  ← 11 unit tests for compliance logic
 │
 ├── docs/
 │   ├── LLM_CHOICE.md       ← Why Claude, not GPT-4o
-│   └── KNOWN_ISSUES.md     ← OpenSeesPy gotchas I hit
+│   └── KNOWN_ISSUES.md     ← OpenSeesPy gotchas I discovered
 │
 ├── results/
-│   ├── building1_results.json     ← Verified (March 2026)
-│   └── all_three_buildings.json   ← Latest run post-bugfix
+│   ├── building1_results.json     ← Fully verified (March 2026)
+│   └── all_three_buildings.json   ← Latest results post-bugfix
 │
 ├── requirements.txt
 ├── CHANGELOG.md
@@ -86,11 +89,11 @@ seismic-llm-assessment/
 
 ---
 
-## Verified Results — Three Newcastle Case Study Buildings
+## The Numbers — Three Newcastle Case Study Buildings
 
-All buildings modeled identically: 2 storeys, 3 bays @ 4.0 m, 8 m wide, Newcastle region (Z=0.11, Site De).
+All modeled identically: 2 storeys, 3 bays @ 4.0m, 8m wide, Newcastle region (Z=0.11, Site De).
 
-| Building | Era | f'c | fy | μ | T1 FEM | Max PIDR | Damage | AS1170.4 |
+| Building | Era | f'c | fy | μ | T1 (FEM) | Max PIDR | Damage | AS1170.4 |
 |---|---|---|---|---|---|---|---|---|
 | **Building 1** | Pre-1990 | 20 MPa | 250 MPa | 2.0 | 0.610 s | 0.516% | Slight | ✓ PASS |
 | **Building 2** | Post-1990 | 32 MPa | 500 MPa | 3.0 | 0.385 s | 0.231% | None | ✓ PASS |
@@ -98,29 +101,29 @@ All buildings modeled identically: 2 storeys, 3 bays @ 4.0 m, 8 m wide, Newcastl
 
 All results regenerated by `src/demo_run_all.py` after v2.0.0 fixes.
 
-**What stands out:**
+**What jumps out:**
 
-- **Building 1's period (0.610 s) is 2.1× the code formula (0.288 s).** This is correct—the code assumes fully elastic sections; the fiber model captures cracking. This is why older buildings are actually more flexible than design codes assume, which is... not great for seismic.
+- **Building 1's period (0.610 s) is 2.1× the code formula (0.288 s).** This is actually correct—the code assumes fully elastic sections, but the fiber model captures concrete cracking under seismic loads. This is why older buildings often behave so differently from what simple code formulas predict.
 
-- **Pre-1990 vs Post-2010 base shear differs by 2.2×.** Ductility factors matter: μ=2.0 (brittle) vs μ=4.0 (ductile). Same building, different era assumptions, completely different seismic demands.
+- **Pre-1990 vs Post-2010 base shear differs by 2.2×.** Ductility factors are the culprit: μ=2.0 (brittle) vs μ=4.0 (ductile). Same building, different era assumptions, completely different seismic demand. This is why code evolution matters.
 
-- **Only Building 1 reaches "Slight damage"** under the synthetic ground motion. This building *should* worry—it's at the edge. Buildings 2 & 3 don't break a sweat.
+- **Only Building 1 reaches "Slight damage"** under the synthetic ground motion. It's at the edge of safety—it passes, but barely. Buildings 2 & 3 don't break a sweat.
 
 ---
 
-## v2.0.0 Bug-Fix Release (May 2026)
+## v2.0.0 — Bug-Fix Release (May 2026)
 
-I found **10 bugs** during code review against my thesis spec. All fixed.
+I found **10 bugs** during code review. All fixed. Here's what mattered:
 
 **The critical ones:**
 
-1. **Amendment 2 missing in `src/compliance.py`** — I specified this in my thesis abstract, and it wasn't actually implemented. The fix: `kpZ = max(kp·Z, 0.08)`. This is a hard minimum that changed results by ~3%.
+1. **Amendment 2 missing in compliance.py** — I specified this in my thesis abstract, but it wasn't actually implemented. The fix: `kpZ = max(kp·Z, 0.08)`. This hard minimum changes the design shear for low-hazard regions (Brisbane, Hobart) by up to 60%. Oops.
 
-2. **PFA calculation was wrong** — I was computing pseudo-acceleration (ω²·u) instead of actual absolute acceleration (a_ground + d²u/dt²). This only matters for detailed damage assessment.
+2. **PFA calculation was wrong** — I was computing pseudo-acceleration (ω²·u) instead of absolute floor acceleration. This only affects detailed damage assessment, but accuracy matters.
 
 3. **Missing `wipeAnalysis()` before OpenSeesPy transient analysis** — OpenSees complains loudly if you don't, but results were still correct. Now cleaned up.
 
-4. **6 of 11 advertised EDPs were straight-up missing:**
+4. **6 of 11 advertised EDPs were missing:**
    - P-Delta θ ratio
    - ASCE 41 damage state
    - HAZUS classification
@@ -144,22 +147,23 @@ python demo_run_all.py                  # ~60 seconds, all three buildings
 
 ## What the Notebook Actually Produces
 
-Per building:
-- **8-panel figure** — displacement time series, storey drift, pushover curve, drift profile, floor accelerations, damage state over time, hysteresis loop, fragility bar chart
-- **Fragility curves** — probability of each damage state (Slight/Moderate/Extensive/Complete) as a function of PIDR
-- **Side-by-side comparison** — all three buildings overlaid (drift, period, base shear, pushover)
-- **Convergence log** — which algorithms were used and did they converge?
-- **JSON export** — all EDPs, pushover data, fragility probabilities
+For each building, you get:
 
-Everything is saved to your Colab session and downloadable.
+- **8-panel figure** — displacement time series, storey drift, pushover curve, drift profile, floor accelerations, damage state evolution, hysteresis loop, fragility bar chart
+- **Fragility curves** — probability of Slight/Moderate/Extensive/Complete damage vs PIDR
+- **Side-by-side comparison** — all three buildings overlaid (drift, period, base shear, pushover)
+- **Convergence log** — which algorithms ran and did they converge?
+- **JSON export** — all EDPs, pushover data, fragility probabilities, metadata
+
+Everything saves to your Colab session and downloads with a click.
 
 ---
 
-## LLM Mode — Claude vs Demo
+## Demo Mode vs Claude Mode
 
-**Demo mode** (no key needed):
+**Demo mode** (no API key):
 ```python
-# Just press Enter when prompted for API key
+# Just press Enter when prompted
 params = extract_parameters("A 2-storey brick home Newcastle 1975...")
 # Returns: { fc: 20, fy: 250, mu: 2.0, ... }
 ```
@@ -172,18 +176,19 @@ params = extract("A 2-storey brick home Newcastle 1975...",
                  api_key=os.environ["ANTHROPIC_API_KEY"])
 ```
 
-Get a free API key at [console.anthropic.com](https://console.anthropic.com). Students can request up to USD 300 in credits at [anthropic.com/contact-sales/for-student-builders](https://www.anthropic.com/contact-sales/for-student-builders).
+Get a free API key at [console.anthropic.com](https://console.anthropic.com). Students can request up to USD 300 in credits.
 
-**Why Claude over GPT-4o?** See [docs/LLM_CHOICE.md](docs/LLM_CHOICE.md), but quick version:
-1. **Constitutional AI** — Claude is more explicit about uncertainty (safer for structural decisions)
-2. **Cost** — ~6-10× cheaper than GPT-4o per extraction
+**Why Claude over GPT-4o?** See [docs/LLM_CHOICE.md](docs/LLM_CHOICE.md), but the quick version:
+
+1. **Constitutional AI** — Claude's more explicit about uncertainty (safer for structural decisions)
+2. **Cost** — ~6–10× cheaper per extraction
 3. **Novelty** — Liang et al. used GPT-4o; using Claude is independently interesting
-4. **Structured assumptions** — Claude's JSON output includes explicit assumption flags
-5. **Academia alignment** — Anthropic's openness culture fits better with reproducibility
+4. **Structured assumptions** — Claude's JSON output explicitly flags every assumption
+5. **Academic alignment** — Anthropic's open research culture fits reproducibility better
 
 ---
 
-## Critical OpenSeesPy Bug I Hit
+## Critical OpenSeesPy Bug (I Wasted Hours on This)
 
 **If you use rigid diaphragm constraints (`equalDOF`), eigenvalue analysis breaks.**
 
@@ -207,13 +212,13 @@ for fi in range(1, num_storeys + 1):
     ops.mass(node_id[fi][0], M_floor, M_floor, 0.0)
 ```
 
-This is documented in [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md). I spent an embarrassing amount of time on this.
+See [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) for details. Yes, I'm embarrassed it took so long to figure out.
 
 ---
 
 ## Running Tests Locally
 
-Tests don't require OpenSeesPy (just for parameter extraction and compliance logic):
+Tests don't need OpenSeesPy (just parameter extraction and compliance logic):
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/seismic-llm-assessment.git
@@ -224,11 +229,11 @@ cd src
 python -m pytest ../tests/ -v
 ```
 
-**Note:** OpenSeesPy is a pain on macOS M1/M2/M3. It builds from source and takes forever. Google Colab works perfectly though.
+**Note:** OpenSeesPy is painful on macOS M1/M2/M3—it builds from source and takes forever. Google Colab works perfectly.
 
 ---
 
-## Pipeline Flow
+## How It Works (The Pipeline)
 
 ```
 User Input (plain English)
@@ -241,16 +246,16 @@ User Input (plain English)
           │
           ▼
  ┌─────────────────────────┐
- │ Human Verification      │ ← You review & approve
- │ Checkpoint              │   (can edit if needed)
+ │ Human Verification      │ ← You review & can edit
+ │ Checkpoint              │
  └────────┬────────────────┘
           │
           ▼
  ┌───────────────────────────────────────────┐
  │ OpenSeesPy Analysis                       │
- │ ├─ Static: gravity loads + AS1170.4 force │
+ │ ├─ Static: gravity + AS1170.4 forces      │
  │ ├─ Eigenvalue: period & mode shapes       │
- │ ├─ Pushover: monotonic pushover to 3%     │
+ │ ├─ Pushover: monotonic to 3% drift        │
  │ └─ Time-History: Newmark integration      │
  └────────┬────────────────────────────────────┘
           │
@@ -277,7 +282,7 @@ User Input (plain English)
 
 ## Citation
 
-If you use this:
+If you use this in your work:
 
 ```bibtex
 @misc{thapa2026seismic,
