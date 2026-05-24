@@ -1,5 +1,5 @@
 # LLM-Orchestrated Seismic Vulnerability Assessment
-### University of Technology Sydney — Engineering Graduate Project PG (42003)
+### University of Technology Sydney: Engineering Graduate Project PG (42003)
 
 **Student:** Kabish Jung Thapa (25631413)
 **Supervisor:** Prof. Jianchun Li
