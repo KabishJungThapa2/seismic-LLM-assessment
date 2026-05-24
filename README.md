@@ -1,4 +1,5 @@
 # LLM-Orchestrated Seismic Vulnerability Assessment
+
 ### University of Technology Sydney — Engineering Graduate Project PG (42003)
 
 **Student:** Kabish Jung Thapa (25631413)  
@@ -8,79 +9,66 @@
 
 ---
 
-## What's This About?
+## Overview
 
-I built a system that predicts whether a residential building will survive an earthquake—just from describing it in plain English. Seriously.
+A system for predicting residential building earthquake vulnerability from plain English descriptions. The system extracts structural parameters, constructs a 3D nonlinear finite element model in OpenSeesPy, performs time-history seismic analysis, and assesses compliance with Australian building code standards.
 
-You write something like: *"An old brick home, 2 storeys, built around 1975, 12m × 8m"*
+**Input:** Plain English description of building characteristics
 
-The system:
-1. Extracts structural parameters (concrete strength, steel yield, ductility, etc.)
-2. Builds a 3D nonlinear finite element model in OpenSeesPy
-3. Runs a time-history seismic analysis on the Newcastle earthquake standard
-4. Tells you if it meets Australian code and shows damage states
+**Process:**
+1. Extract structural parameters (concrete strength, steel yield, ductility, etc.)
+2. Build 3D nonlinear finite element model in OpenSeesPy
+3. Run time-history seismic analysis on Newcastle earthquake standard
+4. Assess compliance with AS1170.4:2007
 
-**No structural engineering experience needed.** You describe. It calculates. You get answers.
-
-```
-"A 2-storey brick home in Newcastle, built ~1975, 12m × 8m floor plan"
-         ↓  Claude API (or demo keyword extraction)
-{ fc: 20 MPa, fy: 250 MPa, μ: 2.0, col: 300×300mm, ... }
-         ↓  OpenSeesPy nonlinear time-history analysis
-PIDR = 0.317% | Damage: None | AS1170.4: ✓ COMPLIANT
-```
-
-**Why I did this:** My thesis explores whether LLMs can replace manual structural parameter extraction. They can—most of the time. There are edge cases, but for quick desktop assessments, this works.
+**Output:** Damage states, drift ratios, fragility curves, code compliance assessment
 
 ---
 
-## Quick Start — Google Colab (Easiest Option)
-
-Don't install anything locally. Seriously, just:
+## Quick Start — Google Colab
 
 1. Go to [Google Colab](https://colab.research.google.com)
 2. **File → Upload notebook**
-3. Pick `notebooks/seismic_assessment_UTS_EGP42003.ipynb`
+3. Select `notebooks/seismic_assessment_UTS_EGP42003.ipynb`
 4. Run cells top to bottom (Shift+Enter)
-5. Cell 6 runs all three case-study buildings automatically
+5. Cell 6 executes all three case-study buildings
 
-**No API key required** — the demo mode uses keyword extraction. You'll get results in about 2 minutes.
+Demo mode (no API key required) uses keyword-based extraction. Full results in approximately 2 minutes.
 
-Want Claude to extract parameters (more accurate on unusual buildings)? Just paste your API key in Cell 2, and it'll use that instead.
+For Claude-based extraction (higher accuracy), add API key to Cell 2. Available at [console.anthropic.com](https://console.anthropic.com).
 
 ---
 
-## What's Inside
+## Repository Structure
 
 ```
 seismic-llm-assessment/
-│
 ├── notebooks/
-│   ├── seismic_assessment_UTS_EGP42003.ipynb  ← START HERE
-│   ├── comprehensive_assessment.py            ← Full pipeline (any n-storey)
+│   ├── seismic_assessment_UTS_EGP42003.ipynb  ← Primary entry point
+│   ├── comprehensive_assessment.py            ← Full pipeline
 │   ├── demo_single_cell.py                    ← Minimal example
-│   └── building1_verified.py                  ← Just Building 1 (reproducibility)
+│   └── building1_verified.py                  ← Building 1 (reproducibility)
 │
 ├── src/
-│   ├── config.py           ← Era defaults, AS1170.4 constants
+│   ├── config.py           ← Configuration, AS1170.4 constants
 │   ├── extractor.py        ← Claude API + demo mode parameter extraction
-│   ├── opensees_model.py   ← Builds RC frame model
+│   ├── opensees_model.py   ← RC frame finite element model
 │   ├── analysis.py         ← Time-history analysis engine
-│   ├── compliance.py       ← AS1170.4 EDP computation & Amendment 2
-│   ├── pipeline.py         ← Main orchestrator (interactive use)
-│   └── demo_run_all.py     ← Non-interactive runner for all 3 buildings
+│   ├── compliance.py       ← AS1170.4 EDP computation
+│   ├── pipeline.py         ← Main orchestrator
+│   └── demo_run_all.py     ← Non-interactive runner
 │
 ├── tests/
-│   ├── test_extractor.py   ← 32 unit tests (no OpenSeesPy needed)
-│   └── test_compliance.py  ← 11 unit tests for compliance logic
+│   ├── test_extractor.py   ← 32 unit tests
+│   └── test_compliance.py  ← 11 unit tests
 │
 ├── docs/
-│   ├── LLM_CHOICE.md       ← Why Claude, not GPT-4o
-│   └── KNOWN_ISSUES.md     ← OpenSeesPy gotchas I discovered
+│   ├── LLM_CHOICE.md       ← LLM selection rationale
+│   └── KNOWN_ISSUES.md     ← OpenSeesPy implementation notes
 │
 ├── results/
-│   ├── building1_results.json     ← Fully verified (March 2026)
-│   └── all_three_buildings.json   ← Latest results post-bugfix
+│   ├── building1_results.json     ← Verified results (March 2026)
+│   └── all_three_buildings.json   ← Latest results post-v2.0.0
 │
 ├── requirements.txt
 ├── CHANGELOG.md
@@ -89,9 +77,9 @@ seismic-llm-assessment/
 
 ---
 
-## The Numbers — Three Newcastle Case Study Buildings
+## Case Study Results — Newcastle Region
 
-All modeled identically: 2 storeys, 3 bays @ 4.0m, 8m wide, Newcastle region (Z=0.11, Site De).
+All buildings modeled identically: 2 storeys, 3 bays @ 4.0m, 8m wide, Newcastle region (Z=0.11, Site De).
 
 | Building | Era | f'c | fy | μ | T1 (FEM) | Max PIDR | Damage | AS1170.4 |
 |---|---|---|---|---|---|---|---|---|
@@ -99,43 +87,33 @@ All modeled identically: 2 storeys, 3 bays @ 4.0m, 8m wide, Newcastle region (Z=
 | **Building 2** | Post-1990 | 32 MPa | 500 MPa | 3.0 | 0.385 s | 0.231% | None | ✓ PASS |
 | **Building 3** | Post-2010 | 40 MPa | 500 MPa | 4.0 | 0.272 s | 0.127% | None | ✓ PASS |
 
-All results regenerated by `src/demo_run_all.py` after v2.0.0 fixes.
+All results regenerated by `src/demo_run_all.py` after v2.0.0 fixes (43/43 tests passing).
 
-**What jumps out:**
+**Key Observations:**
 
-- **Building 1's period (0.610 s) is 2.1× the code formula (0.288 s).** This is actually correct—the code assumes fully elastic sections, but the fiber model captures concrete cracking under seismic loads.
-
-- **Pre-1990 vs Post-2010 base shear differs by 2.2×.** Ductility factors are the culprit: μ=2.0 (brittle) vs μ=4.0 (ductile). Same building, different era assumptions, completely different seismic demand.
-
-- **Only Building 1 reaches "Slight damage"** under the synthetic ground motion. It's at the edge of safety—it passes, but barely. Buildings 2 & 3 don't break a sweat.
+- Building 1 first-mode period (0.610 s) is 2.1× code formula (0.288 s). Fiber model captures concrete cracking and steel yielding under seismic loads.
+- Pre-1990 vs Post-2010 base shear differs 2.2×, driven by ductility factor variations (μ=2.0 vs μ=4.0).
+- Only Building 1 reaches "Slight damage" state under synthetic ground motion; compliance margin present but reduced.
 
 ---
 
-## v2.0.0 — Bug-Fix Release (May 2026)
+## v2.0.0 Release — Bug Fixes and Completeness
 
-I found **10 bugs** during code review. All fixed. Here's what mattered:
+**Critical fixes:**
 
-**The critical ones:**
-
-1. **Amendment 2 missing in compliance.py** — I specified this in my thesis abstract, but it wasn't actually implemented. The fix: `kpZ = max(kp·Z, 0.08)`. This hard minimum changes the design spectrum.
-
-2. **PFA calculation was wrong** — I was computing pseudo-acceleration (ω²·u) instead of absolute floor acceleration. This only affects detailed damage assessment, but accuracy matters.
-
-3. **Missing `wipeAnalysis()` before OpenSeesPy transient analysis** — OpenSees complains loudly if you don't, but results were still correct. Now cleaned up.
-
-4. **6 of 11 advertised EDPs were missing:**
+1. **Amendment 2 missing in compliance.py** — Implementation of kpZ = max(kp·Z, 0.08) hard minimum for design force calculation
+2. **PFA calculation error** — Corrected from pseudo-acceleration to absolute floor acceleration
+3. **Missing `wipeAnalysis()` call** — OpenSeesPy transient analysis cleanup
+4. **6 of 11 advertised EDPs** now included:
    - P-Delta θ ratio
-   - ASCE 41 damage state
+   - ASCE 41 damage state classification
    - HAZUS classification
    - Soft-storey indicator
    - Amplification factors
-   - Governing storey
-   
-   All added in v2.0.0.
+   - Governing storey identification
+5. **Spectral shape Ch interpolation** — Fixed discontinuities at T=0.1 and T=1.5
 
-5. **Spectral shape Ch had weird discontinuities** at T=0.1 and T=1.5. Fixed the interpolation logic.
-
-**Test suite:** 43 of 43 tests passing (was 36/37). Run them:
+**Test suite:** 43 of 43 tests passing.
 
 ```bash
 cd src
@@ -145,30 +123,27 @@ python demo_run_all.py                  # ~60 seconds, all three buildings
 
 ---
 
-## What the Notebook Actually Produces
+## Output Deliverables
 
-For each building, you get:
+For each building assessment:
 
-- **8-panel figure** — displacement time series, storey drift, pushover curve, drift profile, floor accelerations, damage state evolution, hysteresis loop, fragility bar chart
-- **Fragility curves** — probability of Slight/Moderate/Extensive/Complete damage vs PIDR
-- **Side-by-side comparison** — all three buildings overlaid (drift, period, base shear, pushover)
-- **Convergence log** — which algorithms ran and did they converge?
-- **JSON export** — all EDPs, pushover data, fragility probabilities, metadata
-
-Everything saves to your Colab session and downloads with a click.
+- **8-panel figure** — Displacement time series, storey drift, pushover curve, drift profile, floor accelerations, damage state evolution, hysteresis loop, fragility chart
+- **Fragility curves** — Probability of damage states (Slight/Moderate/Extensive/Complete) vs peak interstory drift ratio
+- **Comparative analysis** — All three buildings overlaid for drift, period, base shear, pushover response
+- **Convergence log** — Algorithm convergence status
+- **JSON export** — EDPs, pushover data, fragility probabilities, metadata
 
 ---
 
 ## Demo Mode vs Claude Mode
 
-**Demo mode** (no API key):
+**Demo mode** (keyword-based extraction, no API key):
 ```python
-# Just press Enter when prompted
 params = extract_parameters("A 2-storey brick home Newcastle 1975...")
 # Returns: { fc: 20, fy: 250, mu: 2.0, ... }
 ```
 
-**Claude mode** (more accurate):
+**Claude mode** (LLM-based extraction):
 ```python
 import os
 os.environ["ANTHROPIC_API_KEY"] = "sk-ant-..."
@@ -176,49 +151,35 @@ params = extract("A 2-storey brick home Newcastle 1975...",
                  api_key=os.environ["ANTHROPIC_API_KEY"])
 ```
 
-Get a free API key at [console.anthropic.com](https://console.anthropic.com). Students can request up to USD 300 in credits.
-
-**Why Claude over GPT-4o?** See [docs/LLM_CHOICE.md](docs/LLM_CHOICE.md), but the quick version:
-
-1. **Constitutional AI** — Claude's more explicit about uncertainty (safer for structural decisions)
-2. **Cost** — ~6–10× cheaper per extraction
-3. **Novelty** — Liang et al. used GPT-4o; using Claude is independently interesting
-4. **Structured assumptions** — Claude's JSON output explicitly flags every assumption
-5. **Academic alignment** — Anthropic's open research culture fits reproducibility better
+**LLM selection rationale:** See [docs/LLM_CHOICE.md](docs/LLM_CHOICE.md).
 
 ---
 
-## Critical OpenSeesPy Bug (I Wasted Hours on This)
+## OpenSeesPy Implementation Notes
 
-**If you use rigid diaphragm constraints (`equalDOF`), eigenvalue analysis breaks.**
+**Eigenvalue analysis with rigid diaphragm constraints:**
 
-**Symptom:**
-```
-ArpackSolver::Error with _saupd info = -9
-Starting vector is zero.
-WARNING StaticAnalysis::eigen() - EigenSOE failed
-```
+Rigid diaphragm constraints (`equalDOF`) require specialized eigenvalue solver:
 
-**The fix:**
 ```python
-# ❌ WRONG — fails with equalDOF
+# ❌ Standard eigenvalue call fails with equalDOF
 eigenvalues = ops.eigen(num_modes)
 
-# ✓ CORRECT
+# ✓ Correct for constrained models
 eigenvalues = ops.eigen('-fullGenLapack', num_modes)
 
-# Also: only assign mass to MASTER nodes (not slave nodes)
+# Mass assignment: assign only to master nodes
 for fi in range(1, num_storeys + 1):
     ops.mass(node_id[fi][0], M_floor, M_floor, 0.0)
 ```
 
-See [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) for details. Yes, I'm embarrassed it took so long to figure out.
+Detailed implementation notes: [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md).
 
 ---
 
-## Running Tests Locally
+## Local Testing
 
-Tests don't need OpenSeesPy (just parameter extraction and compliance logic):
+Tests for parameter extraction and compliance logic (OpenSeesPy not required):
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/seismic-llm-assessment.git
@@ -229,43 +190,42 @@ cd src
 python -m pytest ../tests/ -v
 ```
 
-**Note:** OpenSeesPy is painful on macOS M1/M2/M3—it builds from source and takes forever. Google Colab works perfectly.
+Note: Full analysis requires OpenSeesPy. Google Colab recommended for reproducibility.
 
 ---
 
-## How It Works (The Pipeline)
+## Pipeline Architecture
 
 ```
 User Input (plain English)
          │
          ▼
- ┌─────────────────────┐
- │ LLM Extraction      │ ← Claude or demo keyword mode
- │ (extractor.py)      │
- └────────┬────────────┘
-          │
-          ▼
- ┌─────────────────────────┐
- │ Human Verification      │ ← You review & can edit
- │ Checkpoint              │
- └────────┬────────────────┘
-          │
-          ▼
- ┌───────────────────────────────────────────┐
- │ OpenSeesPy Analysis                       │
- │ ├─ Static: gravity + AS1170.4 forces      │
- │ ├─ Eigenvalue: period & mode shapes       │
- │ ├─ Pushover: monotonic to 3% drift        │
- │ └─ Time-History: Newmark integration      │
- └────────┬────────────────────────────────────┘
-          │
-          ▼
- ┌──────────────────────────────┐
- │ Post-Processing              │
- │ - PIDR, PFA, damage states   │
- │ - Fragility curves           │
- │ - JSON + figures             │
- └──────────────────────────────┘
+  ┌─────────────────────┐
+  │ Parameter Extraction│ ← Claude or demo keyword mode
+  │ (extractor.py)      │
+  └────────┬────────────┘
+           │
+           ▼
+  ┌─────────────────────────┐
+  │ Verification Checkpoint │
+  └────────┬────────────────┘
+           │
+           ▼
+  ┌───────────────────────────────────────────┐
+  │ OpenSeesPy Analysis                       │
+  │ ├─ Static: gravity + seismic forces       │
+  │ ├─ Eigenvalue: period & mode shapes       │
+  │ ├─ Pushover: monotonic to 3% drift        │
+  │ └─ Time-History: Newmark integration      │
+  └────────┬────────────────────────────────────┘
+           │
+           ▼
+  ┌──────────────────────────────┐
+  │ Post-Processing & Reporting  │
+  │ - EDPs, damage states        │
+  │ - Fragility curves           │
+  │ - JSON export, visualizations│
+  └──────────────────────────────┘
 ```
 
 ---
@@ -281,8 +241,6 @@ User Input (plain English)
 ---
 
 ## Citation
-
-If you use this in your work:
 
 ```bibtex
 @misc{thapa2026seismic,
