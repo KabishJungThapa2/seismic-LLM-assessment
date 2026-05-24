@@ -2,8 +2,7 @@
 ### University of Technology Sydney: Engineering Graduate Project PG (42003)
 
 **Student:** Kabish Jung Thapa (25631413)
-**Supervisor:** Prof. Jianchun Li
-**Subject:** 42003 Engineering Graduate Project PG — Autumn 2026
+**Subject:** 42003 Engineering Graduate Project PG Autumn 2026
 **Standard:** AS1170.4:2007 (Australian Earthquake Standard)
 
 ---
